@@ -1,6 +1,6 @@
-const mongoose =require('mongoose');
+const mongoose = require('mongoose');
 
-const TwSchema = new mongoose.Schema({
+const SeenMovie = new mongoose.Schema({
 userid:{
     type: String,
     required:true
@@ -21,4 +21,4 @@ updatedon:{
 }
 );
 
-module.exports = mongoose.model('SeenMovie', TwSchema);
+module.exports = mongoose.model('SeenMovie', SeenMovie);

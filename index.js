@@ -10,8 +10,11 @@ const mongoose = require('mongoose');
 const app = express();
 const twsApiRouter = require('./routes/api/tws');
 const CommentUser = require('./models/CommentUser');
+const SeenMovie = require('./models/SeenMovie');
+const Ratings = require('./models/Ratings');
 
 const connectDB = require('./middelwares/db');
+const { find } = require('./models/CommentUser');
 connectDB.connect();
 
 app.use(morgan('dev'));
@@ -44,6 +47,59 @@ server.on('connection', function(socket){
             .then(comment => {
                 io.emit("getComment"+comment.movieid, comment)
                 callback({"status":200,"msg":"getComment"+comment.movieid})
+            })
+            .catch(err => {
+                callback({"status":500,"err":err})
+            })
+        } else {
+            callback({"status":500,"err":"Send body data also"})
+        }  
+    })
+
+
+    socket.on('SeenMovie', function(msg,callback){
+        if (Object.keys(msg).length !== 0) {
+            const seen = new SeenMovie({
+                id: new mongoose.Types.ObjectId(),
+                userid: msg.userid,
+                movieid: msg.movieid
+            })
+            seen.save()
+            .then(seen => {
+                callback({"status":200,"msg":"Added Records"})
+            })
+            .catch(err => {
+                callback({"status":500,"err":err})
+            })
+        } else {
+            callback({"status":500,"err":"Send body data also"})
+        }  
+    })
+
+    socket.on('addratings', function(msg,callback){
+        if (Object.keys(msg).length !== 0) {
+
+            Ratings.find({
+                userid: msg.userid,
+                movieid:msg.movieid
+            }).lean().exec().then(tw => {
+                callback({"status":500,"err":"already gave ratings"})
+            })
+            .catch(err => { 
+                error = err;
+                console.error(error);
+                callback({"status":500,"err":"already gave ratings"})
+            });
+
+            const ratings = new Ratings({
+                id: new mongoose.Types.ObjectId(),
+                rating:msg.rating,
+                userid: msg.userid,
+                movieid: msg.movieid
+            })
+            ratings.save()
+            .then(rating => {
+                callback({"status":200,"ratings":"4","totalcount":"12020","five":"150","four":"120","three":"2432","two":"433443","one":"213123"})
             })
             .catch(err => {
                 callback({"status":500,"err":err})

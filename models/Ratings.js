@@ -3,7 +3,7 @@ const mongoose =require('mongoose');
 const RatingsSchema = new mongoose.Schema({
 
 rating:{
-    type: Int,
+    type: String,
     required: true
 },
 userid:{
