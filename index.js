@@ -9,6 +9,7 @@ const exphbs = require('express-handlebars');
 const mongoose = require('mongoose');
 const app = express();
 const twsApiRouter = require('./routes/api/tws');
+const CommentUser = require('./models/CommentUser');
 
 const connectDB = require('./middelwares/db');
 connectDB.connect();
@@ -31,20 +32,18 @@ server.on('connection', function(socket){
 	console.log('a user connected with id - '+ sender);
       
 	socket.on('addcomment', function(msg,callback){
-        callback({"status":500,"err":"Send body data also"})
-        return
         if (Object.keys(msg).length !== 0) {
-            const comment = new Comment({
+            const comment = new CommentUser({
                 id: new mongoose.Types.ObjectId(),
-                rating: req.body.rating,
-                title: req.body.title,
-                comment: req.body.comment,
-                userid: req.body.userid,
-                movieid: req.body.movieid
+                title: msg.title,
+                comment: msg.comment,
+                userid: msg.userid,
+                movieid: msg.movieid
             })
             comment.save()
             .then(comment => {
-                callback({"status":200,"comment":comment})
+                io.emit("getComment"+comment.movieid, comment)
+                callback({"status":200,"msg":"getComment"+comment.movieid})
             })
             .catch(err => {
                 callback({"status":500,"err":err})

@@ -1,10 +1,6 @@
 const mongoose =require('mongoose');
 
-const TwSchema = new mongoose.Schema({
-rating:{
-    type: String,
-    required:true
-},
+const CommentUser = new mongoose.Schema({
 title:{
     type: String,
     required:true
@@ -33,4 +29,4 @@ updatedon:{
 }
 );
 
-module.exports = mongoose.model('Comment', TwSchema);
+module.exports = mongoose.model('CommentUser', CommentUser);

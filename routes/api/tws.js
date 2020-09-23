@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const app = express();
 const Router = express.Router();
 
-const Comment = require('../../models/Comment');
+const CommentUser = require('../../models/CommentUser');
 const SeenMovie = require('../../models/SeenMovie');
 
 // This is the route to have all the tws
 Router.get('/', (req, res) => {
-    Comment.find()
+    CommentUser.find()
         .lean()
         .exec()
         .then(tws => {
@@ -43,7 +43,7 @@ Router.get('/', (req, res) => {
 Router.post('/sendcomment', (req, res) => {
     console.log(req.body)
     if (Object.keys(req.body).length !== 0) {
-        const comment = new Comment({
+        const comment = new CommentUser({
             id: new mongoose.Types.ObjectId(),
             rating: req.body.rating,
             title: req.body.title,
