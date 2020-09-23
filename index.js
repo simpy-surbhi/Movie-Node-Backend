@@ -19,6 +19,46 @@ app.use(bodyParser.json());
 
 app.use('/api/tws', twsApiRouter);
 
+var http = require('http').createServer(app);
+var io = require('socket.io')(http);
+
+app.use(express.static('public'));
+
+server = io.listen(3001)
+
+server.on('connection', function(socket){
+	let sender = socket.handshake.query.movieId;
+	console.log('a user connected with id - '+ sender);
+      
+	socket.on('addcomment', function(msg,callback){
+        callback({"status":500,"err":"Send body data also"})
+        return
+        if (Object.keys(msg).length !== 0) {
+            const comment = new Comment({
+                id: new mongoose.Types.ObjectId(),
+                rating: req.body.rating,
+                title: req.body.title,
+                comment: req.body.comment,
+                userid: req.body.userid,
+                movieid: req.body.movieid
+            })
+            comment.save()
+            .then(comment => {
+                callback({"status":200,"comment":comment})
+            })
+            .catch(err => {
+                callback({"status":500,"err":err})
+            })
+        } else {
+            callback({"status":500,"err":"Send body data also"})
+        }  
+    })
+
+    socket.on('disconnect', function(){
+        let sender = socket.handshake.query.idMovie
+		console.log('user disconnected'+ sender)
+	})
+})
 
 app.get('/',function(req,res){
     res.send('It works ! vishal kalola')
@@ -29,9 +69,4 @@ app.use((req,res,next)=>{
     error.status = 404;
     next(error);
 })
-
-app. listen(process.env.PORT, function(){
-console.log("server is runnig in localhost " + process.env.PORT);
-
-});
 
