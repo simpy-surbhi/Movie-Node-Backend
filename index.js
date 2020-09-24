@@ -16,6 +16,7 @@ const Ratings = require('./models/Ratings');
 const connectDB = require('./middelwares/db');
 const { find } = require('./models/CommentUser');
 const { send } = require('process');
+const { use } = require('./routes/api/tws');
 connectDB.connect();
 
 app.use(morgan('dev'));
@@ -32,11 +33,12 @@ app.use(express.static('public'));
 server = io.listen(3001)
 
 server.on('connection', function(socket){
-	let sender = socket.handshake.query.movieId;
-    console.log('a user connected with id - '+ sender);
+    let sender = socket.handshake.query.movieId;
+    let userid = socket.handshake.query.userid;
+    console.log('a user connected with id - '+ sender + " - " + userid);
     
     if(sender){
-       getRating(sender)
+       getRating(sender,userid)
        getComments(sender)
     }
       
@@ -65,18 +67,33 @@ server.on('connection', function(socket){
 
     socket.on('SeenMovie', function(msg,callback){
         if (Object.keys(msg).length !== 0) {
-            const seen = new SeenMovie({
-                id: new mongoose.Types.ObjectId(),
+            const obj = SeenMovie.find({
                 userid: msg.userid,
-                movieid: msg.movieid
+                movieid:msg.movieid
+            }).lean().exec().then(tw => {
+                if (tw.length == 0) {
+                    const seen = new SeenMovie({
+                        id: new mongoose.Types.ObjectId(),
+                        userid: msg.userid,
+                        movieid: msg.movieid
+                    })
+                    seen.save()
+                    .then(seen => {
+                        callback({"status":200,"msg":"Added Records"})
+                    })
+                    .catch(err => {
+                        callback({"status":500,"err":err})
+                    })
+                }else{
+                    throw "Already seen Movie"
+                }
             })
-            seen.save()
-            .then(seen => {
-                callback({"status":200,"msg":"Added Records"})
-            })
-            .catch(err => {
-                callback({"status":500,"err":err})
-            })
+            .catch(err => { 
+                error = err;
+                console.error(error);
+                callback({"status":500,"err":"already gave ratings"})
+                return
+            });
         } else {
             callback({"status":500,"err":"Send body data also"})
         }  
@@ -85,31 +102,36 @@ server.on('connection', function(socket){
     socket.on('addratings', function(msg,callback){
         if (Object.keys(msg).length !== 0) {
 
-            Ratings.find({
+            const obj = Ratings.find({
                 userid: msg.userid,
                 movieid:msg.movieid
             }).lean().exec().then(tw => {
-                callback({"status":500,"err":"already gave ratings"})
+                if (tw.length == 0) {
+                    console.log("vishal")
+                    const ratings = new Ratings({
+                        id: new mongoose.Types.ObjectId(),
+                        rating:msg.rating,
+                        userid: msg.userid,
+                        movieid: msg.movieid
+                    })
+                    ratings.save()
+                    .then(rating => {
+                        getRating(msg.movieid,msg.userid)
+                        callback({"status":200,"msg":"Reached Rating"})
+                    })
+                    .catch(err => {
+                        callback({"status":500,"err":err})
+                    })
+                }else{
+                    throw "error"
+                }
             })
             .catch(err => { 
                 error = err;
                 console.error(error);
                 callback({"status":500,"err":"already gave ratings"})
+                return
             });
-
-            const ratings = new Ratings({
-                id: new mongoose.Types.ObjectId(),
-                rating:msg.rating,
-                userid: msg.userid,
-                movieid: msg.movieid
-            })
-            ratings.save()
-            .then(rating => {
-                callback({"status":200,"ratings":"4","totalcount":"12020","five":"150","four":"120","three":"2432","two":"433443","one":"213123"})
-            })
-            .catch(err => {
-                callback({"status":500,"err":err})
-            })
         } else {
             callback({"status":500,"err":"Send body data also"})
         }  
@@ -123,20 +145,26 @@ server.on('connection', function(socket){
         }
     }
 
-    async function getRating(movieid){
+    async function getRating(movieid,userid){
         if (movieid) {
-            
             const fivecount = await Ratings.find({ rating:"5", movieid:movieid});
-            console.log(fivecount.length)
             const fourcount = await Ratings.find({ rating:"4", movieid:movieid});
             const threecount = await Ratings.find({ rating:"3", movieid:movieid});
             const twocount = await Ratings.find({ rating:"2", movieid:movieid});
             const onecount = await Ratings.find({ rating:"1", movieid:movieid});
             const totalcount = await Ratings.find({ movieid:movieid});
+            const rating = await Ratings.find({ movieid:movieid,userid:userid});
+            average = 0.0
+            isenable = "0"
+            if(rating.length > 0){
+                isenable = "1"
+            }
 
-            average = ((5*fivecount.length) + (4*fourcount.length) + (3*threecount.length) + (2*twocount.length) + (1*onecount.length))/(fivecount.length+fourcount.length+threecount.length+twocount.length+onecount.length)
-            average = Number((average).toFixed(1));
-            io.emit("getRatings"+movieid, {"status":200,"ratings":average,"totalcount":totalcount.length,"five":fivecount.length,"four":fourcount.length,"three":threecount.length,"two":twocount.length,"one":onecount.length})
+            if(totalcount.length > 0){
+                average = ((5*fivecount.length) + (4*fourcount.length) + (3*threecount.length) + (2*twocount.length) + (1*onecount.length))/(fivecount.length+fourcount.length+threecount.length+twocount.length+onecount.length)
+                average = Number((average).toFixed(1));
+            }
+            io.emit("getRatings"+movieid, {"status":200,"ratings":average,"isenable":isenable,"totalcount":totalcount.length,"five":fivecount.length,"four":fourcount.length,"three":threecount.length,"two":twocount.length,"one":onecount.length})
         }
     }
 
@@ -145,6 +173,10 @@ server.on('connection', function(socket){
         console.log('user disconnected'+ sender)
 	})
 })
+
+app.listen(4000, function() {
+    console.log('Ready on port 4000');
+});
 
 app.get('/',function(req,res){
     res.send('It works ! vishal kalola')
@@ -155,4 +187,3 @@ app.use((req,res,next)=>{
     error.status = 404;
     next(error);
 })
-

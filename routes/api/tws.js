@@ -40,48 +40,22 @@ Router.get('/', (req, res) => {
 
 
 //this is the route to create a tw
-Router.post('/sendcomment', (req, res) => {
-    console.log(req.body)
-    if (Object.keys(req.body).length !== 0) {
-        const comment = new CommentUser({
-            id: new mongoose.Types.ObjectId(),
-            rating: req.body.rating,
-            title: req.body.title,
-            comment: req.body.comment,
-            userid: req.body.userid,
-            movieid: req.body.movieid
-        })
-        comment.save()
-        .then(comment => {
-            res.status(200).send(comment);
+
+Router.post('/getSeenMovie', (req, res) => {
+    const userid = req.body.userid;
+    SeenMovie.find({userid:userid})
+        .lean()
+        .exec()
+        .then(tws => {
+            console.log(tws);
+            res.status(200).json(tws);
         })
         .catch(err => {
-            res.status(500).json({error: err});    
-        })
-    } else {
-        res.status(500).json({error: "Send body data also"});    
-    }
+            error = err;
+            console.error(error);
+    });
 })
 
-//this is the route to create a tw
-Router.post('/addscenemovie', (req, res) => {
-    console.log(req.body)
-    if (Object.keys(req.body).length !== 0) {
-        const seenmovie = new SeenMovie({
-            id: new mongoose.Types.ObjectId(),
-            userid: req.body.userid,
-            movieid: req.body.movieid
-        })
-        seenmovie.save()
-        .then(seenmovie => {
-            res.status(200).send(seenmovie);
-        })
-        .catch(err => {
-            res.status(500).json({error: err});    
-        })
-    } else {
-        res.status(500).json({error: "Send body data also"});    
-    }
-})
+
 
 module.exports = Router;
