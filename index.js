@@ -15,6 +15,7 @@ const Ratings = require('./models/Ratings');
 
 const connectDB = require('./middelwares/db');
 const { find } = require('./models/CommentUser');
+const { send } = require('process');
 connectDB.connect();
 
 app.use(morgan('dev'));
@@ -32,7 +33,12 @@ server = io.listen(3001)
 
 server.on('connection', function(socket){
 	let sender = socket.handshake.query.movieId;
-	console.log('a user connected with id - '+ sender);
+    console.log('a user connected with id - '+ sender);
+    
+    if(sender){
+       getRating(sender)
+       getComments(sender)
+    }
       
 	socket.on('addcomment', function(msg,callback){
         if (Object.keys(msg).length !== 0) {
@@ -109,9 +115,34 @@ server.on('connection', function(socket){
         }  
     })
 
+    async function getComments(movieid){
+        if (movieid) {
+            const comments = await CommentUser.find({movieid:movieid})
+            console.log("comments total"+comments.length)
+            io.emit("getComment"+movieid, comments)
+        }
+    }
+
+    async function getRating(movieid){
+        if (movieid) {
+            
+            const fivecount = await Ratings.find({ rating:"5", movieid:movieid});
+            console.log(fivecount.length)
+            const fourcount = await Ratings.find({ rating:"4", movieid:movieid});
+            const threecount = await Ratings.find({ rating:"3", movieid:movieid});
+            const twocount = await Ratings.find({ rating:"2", movieid:movieid});
+            const onecount = await Ratings.find({ rating:"1", movieid:movieid});
+            const totalcount = await Ratings.find({ movieid:movieid});
+
+            average = ((5*fivecount.length) + (4*fourcount.length) + (3*threecount.length) + (2*twocount.length) + (1*onecount.length))/(fivecount.length+fourcount.length+threecount.length+twocount.length+onecount.length)
+            average = Number((average).toFixed(1));
+            io.emit("getRatings"+movieid, {"status":200,"ratings":average,"totalcount":totalcount.length,"five":fivecount.length,"four":fourcount.length,"three":threecount.length,"two":twocount.length,"one":onecount.length})
+        }
+    }
+
     socket.on('disconnect', function(){
         let sender = socket.handshake.query.idMovie
-		console.log('user disconnected'+ sender)
+        console.log('user disconnected'+ sender)
 	})
 })
 
